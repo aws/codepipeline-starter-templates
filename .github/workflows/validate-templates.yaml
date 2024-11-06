@@ -1,0 +1,21 @@
+name: Validate Templates
+
+on: [pull_request, push]
+
+jobs:
+  validate-templates:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -U cfn-lint
+      - run: cfn-lint templates/cloudformation/* --non-zero-exit-code warning
