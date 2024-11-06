@@ -1,0 +1,11 @@
+{
+  "id": "deployToEcr",
+  "name": "Push to ECR",
+  "description": "Build and push a new container image to Amazon ECR",
+  "category": "Deployment",
+  "badge": "New",
+  "icon-name": "ecr",
+  "tags": ["ecr"],
+  "template-location": "./cloudformation/deploy-to-ecr.yaml",
+  "ui-hints-location": "./ui-hints/deploy-to-ecr.json"
+}

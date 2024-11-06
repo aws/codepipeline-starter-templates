@@ -1,0 +1,53 @@
+{
+  "supported-source-filters": {
+    "owner": ["CodeStarConnection"]
+  },
+  "constraints": {
+    "ConnectionArn": {
+      "Required": true,
+      "Arn": true
+    },
+    "FullRepositoryId": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255,
+      "Contains": "/"
+    },
+    "BranchName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "CodePipelineName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 100
+    },
+    "CICodeBuildSpec": {
+      "Required": true,
+      "MinLength": 1
+    },
+    "ScheduleExpression": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 256
+    },
+    "ScheduleExpressionTimezone": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 50
+    },
+    "RetentionPolicy": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    }
+  },
+  "text-editor-styles": {
+    "CICodeBuildSpec": {
+      "mode": "yaml",
+      "minLines": 1,
+      "maxLines": 22
+    }
+  }
+}

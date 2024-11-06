@@ -1,0 +1,29 @@
+{
+  "name": "@aws/codepipeline-starter-templates",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "clean": "rm -rf node_modules dist build generated-metadata",
+    "copy-templates": "cp -r templates/metadata generated-metadata",
+    "strip-comments": "npx ts-node scripts/strip-comments.ts",
+    "pre-test": "rm -rf generated-metadata && npm run copy-templates && npm run strip-comments",
+    "merge-cloudformation-templates": "npx ts-node scripts/merge-cloudformation-templates.ts",
+    "validate-schemas": "npx ts-node scripts/validate-schemas.ts",
+    "test": "npm run pre-test && npm run validate-schemas && npm run merge-cloudformation-templates"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "*",
+    "ajv": "*",
+    "ajv-draft-04": "*",
+    "glob": "*",
+    "js-yaml": "*",
+    "prettier": "*",
+    "strip-comments": "*",
+    "ts-node": "*",
+    "typescript": "*",
+    "yaml-cfn": "^0.3.2"
+  }
+}

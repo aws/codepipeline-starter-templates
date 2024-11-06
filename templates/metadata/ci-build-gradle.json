@@ -1,0 +1,11 @@
+{
+  "id": "ciBuildGradle",
+  "name": "CI Build Gradle",
+  "description": "Build a gradle project",
+  "category": "Continuous Integration",
+  "badge": "New",
+  "icon-name": "gradle",
+  "tags": ["gradle", "codebuild"],
+  "template-location": "./cloudformation/ci-build-gradle.yaml",
+  "ui-hints-location": "./ui-hints/ci-build-gradle.json"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "ciScheduleBuildMaven",
+  "name": "Schedule a maven build pipeline",
+  "description": "Build a maven project periodically",
+  "category": "Automation",
+  "badge": "New",
+  "icon-name": "maven",
+  "tags": ["maven", "codebuild", "schedule"],
+  "template-location": "./cloudformation/ci-schedule-build-maven.yaml",
+  "ui-hints-location": "./ui-hints/ci-schedule-build-maven.json"
+}

@@ -1,0 +1,11 @@
+{  
+  "id": "ciBuildPython",
+  "name": "CI Build Python",
+  "description": "Build a python project",
+  "category": "Continuous Integration",
+  "badge": "New",
+  "icon-name": "python",
+  "tags": ["python", "codebuild"],
+  "template-location": "./cloudformation/ci-build-python.yaml",
+  "ui-hints-location": "./ui-hints/ci-build-python.json"
+}

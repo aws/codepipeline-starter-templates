@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["Deployment", "release", "Automation", "Continuous Integration"]
+    },
+    "description": {
+      "type": "string"
+    },
+    "badge": {
+      "type": "string",
+      "enum": ["Coming Soon", "New", "Default", "Popular"]
+    },
+    "icon-name": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "template-location": {
+      "type": "string"
+    },
+    "ui-hints-location": {
+      "type": "string"
+    }
+  },
+  "required": ["id", "name", "description", "icon-name", "tags", "template-location", "ui-hints-location"]
+}

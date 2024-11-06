@@ -1,0 +1,70 @@
+{
+  "supported-source-filters": {
+    "owner": ["CodeStarConnection"]
+  },
+  "constraints": {
+    "ConnectionArn": {
+      "Required": true,
+      "Arn": true
+    },
+    "FullRepositoryId": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255,
+      "Contains": "/"
+    },
+    "BranchName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "CodePipelineName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 100
+    },
+    "StackName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "TemplatePath": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "TemplateConfiguration": {
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "ParameterOverrides": {
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "OutputFileName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "CloudFormationResourcePermissions": {
+      "Required": true,
+      "MinLength": 1
+    },
+    "RetentionPolicy": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    }
+  },
+  "placeholders": {
+    "TemplatePath": "template.yaml",
+    "CloudFormationResourcePermissions": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    { \n      \"Sid\": \"PermissionsForCloudFormation\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+  },
+  "text-editor-styles": {
+    "CloudFormationResourcePermissions": {
+      "mode": "json",
+      "minLines": 11,
+      "maxLines": 22
+    }
+  }
+}

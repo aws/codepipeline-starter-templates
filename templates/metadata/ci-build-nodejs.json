@@ -1,0 +1,11 @@
+{
+  "id": "ciBuildNodeJS",
+  "name": "CI Build NodeJS",
+  "description": "Build a node js project",
+  "category": "Continuous Integration",
+  "badge": "New",
+  "icon-name": "nodejs",
+  "tags": ["nodejs", "codebuild"],
+  "template-location": "./cloudformation/ci-build-nodejs.yaml",
+  "ui-hints-location": "./ui-hints/ci-build-nodejs.json"
+}

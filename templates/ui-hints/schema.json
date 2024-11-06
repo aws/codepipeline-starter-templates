@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "supported-source-filters": {
+      "type": "object",
+      "patternProperties": {
+        "^(owner|provider)$": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "constraints": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "properties": {
+            "Required": {
+              "type": "boolean"
+            },
+            "Arn": {
+              "type": "boolean"
+            },
+            "MinLength": {
+              "type": "number"
+            },
+            "MaxLength": {
+              "type": "number"
+            },
+            "Contains": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "placeholders": {
+      "type": "object"
+    },
+    "text-editor-styles": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["yaml", "json"]
+            },
+            "minLines": {
+              "type": "integer"
+            },
+            "maxLines": {
+              "type": "integer"
+            }
+          },
+          "required": ["mode", "minLines", "maxLines"],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

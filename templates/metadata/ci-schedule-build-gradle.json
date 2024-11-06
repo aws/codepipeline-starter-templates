@@ -1,0 +1,11 @@
+{
+  "id": "ciScheduleBuildGradle",
+  "name": "Schedule a gradle build pipeline",
+  "description": "Build a gradle project periodically",
+  "category": "Automation",
+  "badge": "New",
+  "icon-name": "gradle",
+  "tags": ["gradle", "codebuild", "schedule"],
+  "template-location": "./cloudformation/ci-schedule-build-gradle.yaml",
+  "ui-hints-location": "./ui-hints/ci-schedule-build-gradle.json"
+}

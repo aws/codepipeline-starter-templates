@@ -1,0 +1,31 @@
+{
+  "supported-source-filters": {
+    "provider": ["ECR"]
+  },
+  "constraints": {
+    "RepositoryName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "CodePipelineName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 100
+    },
+    "ImageTag": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "ContainerPort": {
+      "Required": true,
+      "MinLength": 1
+    },
+    "RetentionPolicy": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    }
+  }
+}

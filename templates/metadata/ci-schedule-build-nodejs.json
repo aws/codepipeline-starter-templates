@@ -1,0 +1,11 @@
+{  
+  "id": "ciScheduleBuildNodeJS",
+  "name": "Schedule a nodejs build pipeline",
+  "description": "Build a nodejs project periodically",
+  "category": "Automation",
+  "badge": "New",
+  "icon-name": "nodejs",
+  "tags": ["nodejs", "codebuild", "schedule"],
+  "template-location": "./cloudformation/ci-schedule-build-nodejs.yaml",
+  "ui-hints-location": "./ui-hints/ci-schedule-build-nodejs.json"
+}

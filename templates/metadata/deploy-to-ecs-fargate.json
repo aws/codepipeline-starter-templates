@@ -1,0 +1,11 @@
+{
+  "id": "deployToEcsFargate",
+  "name": "Deploy to ECS Fargate",
+  "description": "Deploy a ECR image to Amazon ECS Fargate cluster",
+  "category": "Deployment",
+  "badge": "New",
+  "icon-name": "ecs",
+  "tags": ["ecr", "ecs", "fargate"],
+  "template-location": "./cloudformation/deploy-to-ecs-fargate.yaml",
+  "ui-hints-location": "./ui-hints/deploy-to-ecs-fargate.json"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "ciBuildMaven",
+  "name": "CI Build Maven",
+  "description": "Build a maven project",
+  "category": "Continuous Integration",
+  "badge": "New",
+  "icon-name": "maven",
+  "tags": ["maven", "codebuild"],
+  "template-location": "./cloudformation/ci-build-maven.yaml",
+  "ui-hints-location": "./ui-hints/ci-build-maven.json"
+}

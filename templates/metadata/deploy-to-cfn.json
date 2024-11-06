@@ -1,0 +1,11 @@
+{
+  "id": "deployToCfn",
+  "name": "Deploy to CloudFormation",
+  "description": "Deploy your cloud formation template",
+  "category": "Deployment",
+  "badge": "Default",
+  "icon-name": "cloudformation",
+  "tags": ["cloudformation", "cf"],
+  "template-location": "./cloudformation/deploy-to-cfn.yaml",
+  "ui-hints-location": "./ui-hints/deploy-to-cfn.json"
+}

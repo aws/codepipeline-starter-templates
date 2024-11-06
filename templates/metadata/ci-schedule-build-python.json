@@ -1,0 +1,11 @@
+{
+  "id": "ciScheduleBuildPython",
+  "name": "Schedule a python build pipeline",
+  "description": "Build a python project periodically",
+  "category": "Automation",
+  "badge": "New",
+  "icon-name": "python",
+  "tags": ["python", "codebuild", "schedule"],
+  "template-location": "./cloudformation/ci-schedule-build-python.yaml",
+  "ui-hints-location": "./ui-hints/ci-schedule-build-python.json"
+}

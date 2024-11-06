@@ -1,0 +1,36 @@
+{
+  "supported-source-filters": {
+    "owner": ["CodeStarConnection"]
+  },
+  "constraints": {
+    "ConnectionArn": {
+      "Required": true,
+      "Arn": true
+    },
+    "FullRepositoryId": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255,
+      "Contains": "/"
+    },
+    "BranchName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    },
+    "CodePipelineName": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 100
+    },
+    "CICodeBuildSpec": {
+      "Required": true,
+      "MinLength": 1
+    },
+    "RetentionPolicy": {
+      "Required": true,
+      "MinLength": 1,
+      "MaxLength": 255
+    }
+  }
+}
