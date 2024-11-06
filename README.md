@@ -17,22 +17,15 @@ This project uses Node.js for development tasks. To set up the development envir
 
 1. Ensure you have Node.js 18 or later installed
 2. Run `npm install` to install dependencies
-3. Use the provided npm scripts for various tasks:
-   - `npm run clean`: Remove generated files and directories
-   - `npm run test`: Run all validation and merging scripts
-   - `npm run validate-schemas`: Validate JSON schemas
-   - `npm run merge-cloudformation-templates`: Merge CloudFormation templates
 
 ### Adding new templates
- 
+
 To add a new template, follow these steps:
- 
+
 1. Create a new metadata file for the template in the `/templates/metadata` folder. This file should conform to the schema defined in `/templates/metadata/schema.json`.
- 
 2. Add the corresponding CloudFormation template file in the `/templates/cloudformation` folder.
- 
 3. The build script will automatically validate the metadata and CloudFormation template files, and generate the synthesized files for the CodePipeline Console to render.
- 
+
 ### Adding new icons
  
 You are not required to add a new icon for your template. You can use the existing `codepipeline.svg` icon located in the `assets/icons/` folder. 
@@ -41,6 +34,20 @@ If you want to add a new icon to this package,
 1. Add the SVG file to the `assets/icons/` folder in this project.
 2. The icon-name in the metadata should correspond to the relevant folder, for example, `icon-name: lambda` expects an icon file at `asset/icons/lambda.svg`.
 
+
+### Testing your changes
+
+Our [template validation workflow](.github/workflows/validate-templates.yaml) involves JSON schema validation using npm and CloudFormation linting using [cfn-lint](https://github.com/aws-cloudformation/cfn-lint). To test your changes locally:
+
+1. Ensure you have npm and cfn-lint installed on your system.
+2. Run the following command to validate the JSON files:
+   ```
+   npm run test
+   ```
+3. Run the following command to validate the CloudFormation files:
+   ```
+   cfn-lint templates/cloudformation/*
+   ```
 
 ## Contributing
 
