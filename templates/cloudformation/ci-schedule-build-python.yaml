@@ -365,6 +365,18 @@ Resources:
             Resource:
               - !GetAtt CodeBuildActionRole.Arn
               - !GetAtt CodeConnectionsActionRole.Arn
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - !Sub
+                - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codepipeline/${pipelineName}
+                - pipelineName: !Ref CodePipelineName
+              - !Sub
+                - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codepipeline/${pipelineName}:*
+                - pipelineName: !Ref CodePipelineName
         Version: '2012-10-17'
       PolicyName: CodePipelineDefaultPolicy
       Roles:
