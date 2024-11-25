@@ -1,0 +1,599 @@
+Parameters:
+  ConnectionArn:
+    Description: The CodeConnections ARN for your source repository.
+    Type: String
+  FullRepositoryId:
+    Description: The full repository ID to use with your CodeConnections connection.
+    Type: String
+  BranchName:
+    Description: The branch name to use with your CodeConnections connection.
+    Type: String
+  CodePipelineName:
+    Description: The CodePipeline pipeline name that will run your Reflect tests.
+    Type: String
+    Default: SimpleTestOnReflect
+  ReflectAPIKeySecretArn:
+    Description: The ARN of the AWS Secrets Manager secret containing the API key for your Reflect account.
+    Type: String
+  ReflectAPIKeySecretJsonKeyName:
+    Description: The JSON key name within the AWS Secrets Manager secret that holds the value for your Reflect account API key.
+    Type: String
+  ReflectSuiteId:
+    Description: The ID of your Reflect test suite.
+    Type: String
+  ReflectWaitForTestResults:
+    Description: Waits for the Reflect test suite to complete and set the CodePipeline action status based on the test results.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  CICodeBuildSpec:
+    Description: The CodeBuild build specification running your Reflect tests.
+    Type: String
+    Default: |
+      version: 0.2
+
+      env:
+        exported-variables:
+          - REFLECT_TEST_SUITE_URL
+
+      phases:
+        install:
+          commands:
+            - echo "Setting default values for parameters if not provided..."
+            - |
+              if [ -z "$PARAM_VARIABLES" ]; then
+                PARAM_VARIABLES='{}'
+              fi
+
+              if [ -z "$PARAM_OVERRIDES" ]; then
+                PARAM_OVERRIDES='{}'
+              fi
+
+              if [ -z "$PARAM_GITHUB" ]; then
+                if [ "$SOURCE_VARIABLE_PROVIDER_TYPE" = "GitHub" ]; then
+                  echo "Constructing PARAM_GITHUB based on the CodePipeline source action information..."
+                  REPO_OWNER=$(echo "$SOURCE_VARIABLE_FULL_REPO_NAME" | cut -d'/' -f1)
+                  REPO_NAME=$(echo "$SOURCE_VARIABLE_FULL_REPO_NAME" | cut -d'/' -f2)
+                  PARAM_GITHUB=$(jq -n --arg owner "$REPO_OWNER" --arg repo "$REPO_NAME" --arg sha "$SOURCE_VARIABLE_COMMIT_ID" '{"gitHub": {"owner": $owner, "repo": $repo, "sha": $sha}}')
+                else
+                  PARAM_GITHUB='{}'
+                fi
+              fi
+
+              echo "PARAM_VARIABLES: $PARAM_VARIABLES"
+              echo "PARAM_OVERRIDES: $PARAM_OVERRIDES"
+              echo "Constructing EXECUTE_SUITE_REQUEST_BODY..."
+              EXECUTE_SUITE_REQUEST_BODY=$(jq -n \
+                  --argjson variables "$PARAM_VARIABLES" \
+                  --argjson overrides "$PARAM_OVERRIDES" \
+                  --argjson github "$PARAM_GITHUB" \
+                  '{variables: $variables, overrides: $overrides, gitHub: $github}')
+              echo "EXECUTE_SUITE_REQUEST_BODY: $EXECUTE_SUITE_REQUEST_BODY"
+
+        build:
+          commands:
+            - export KEY_HEADER="X-API-KEY:${API_KEY}"
+            - echo "Sending API request to execute Reflect test suite..."
+            - |
+              EXECUTION_RESPONSE=$(curl -X POST -H "$KEY_HEADER" -d "$EXECUTE_SUITE_REQUEST_BODY" -s "https://api.reflect.run/v1/suites/$SUITE_ID/executions")
+              echo "Execution Response: $EXECUTION_RESPONSE"
+              REFLECT_TEST_SUITE_URL=$(echo $EXECUTION_RESPONSE | jq -r '.url')
+              if [ "$REFLECT_TEST_SUITE_URL" == "null" ]; then
+                echo "Error: Invalid response. $EXECUTION_RESPONSE"
+                exit 1
+              else
+                echo "Successfully invoked Reflect test suite. Visit the following URL to view the results: $REFLECT_TEST_SUITE_URL"
+              fi
+            - |
+              EXECUTION_ID=$(echo $EXECUTION_RESPONSE | jq -r '.executionId')
+              if [ "$WAIT_FOR_TEST_RESULTS" = "true" ]; then
+                echo "Waiting for test results..."
+                while true; do
+                  EXECUTION_STATUS=$(curl -H "$KEY_HEADER" -s "https://api.reflect.run/v1/suites/$SUITE_ID/executions/$EXECUTION_ID" | jq -r '.isFinished')
+                  if [ "$EXECUTION_STATUS" = "true" ]; then
+                    FINAL_STATUS=$(curl -H "$KEY_HEADER" -s "https://api.reflect.run/v1/suites/$SUITE_ID/executions/$EXECUTION_ID" | jq -r '.status')
+                    if [ "$FINAL_STATUS" = "passed" ]; then
+                      echo "Tests passed successfully."
+                      exit 0
+                    else
+                      echo "Tests failed with status: $FINAL_STATUS"
+                      exit 1
+                    fi
+                  fi
+                  sleep 10
+                done
+              else
+                echo "Skipping waiting for test results."
+              fi
+  RetentionPolicy:
+    Description: Define if you'd like the resource retained or deleted when the
+      CloudFormation stack is deleted.
+    Type: String
+    Default: Delete
+    AllowedValues:
+      - Delete
+      - Retain
+  ReflectParamOverride:
+    Description: An optional JSON blob containing overrides for this suite execution.
+    Type: String
+    Default: ''
+  ReflectParamVariables:
+    Description: An optional JSON blob containing modified variable values for this suite execution.
+    Type: String
+    Default: ''
+  ReflectParamGitHub:
+    Description: An optional JSON blob specifying the GitHub repository name, its owner, and commit SHA to post the status.
+    Type: String
+    Default: ''
+
+Conditions:
+  HasReflectParamOverride: !Not [!Equals ['', !Ref ReflectParamOverride]]
+  HasReflectParamVariables: !Not [!Equals ['', !Ref ReflectParamVariables]]
+  HasReflectParamGitHub: !Not [!Equals ['', !Ref ReflectParamGitHub]]
+
+Resources:
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: '2012-10-17'
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - !Sub
+                    - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${projectName}
+                    - projectName:
+                        Fn::Join:
+                          - '-'
+                          - - TestOnReflectProject
+                            - Fn::Select:
+                                - 4
+                                - Fn::Split:
+                                    - '-'
+                                    - Fn::Select:
+                                        - 2
+                                        - Fn::Split:
+                                            - /
+                                            - Ref: AWS::StackId
+                  - !Sub
+                    - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${projectName}:*
+                    - projectName:
+                        Fn::Join:
+                          - '-'
+                          - - TestOnReflectProject
+                            - Fn::Select:
+                                - 4
+                                - Fn::Split:
+                                    - '-'
+                                    - Fn::Select:
+                                        - 2
+                                        - Fn::Split:
+                                            - /
+                                            - Ref: AWS::StackId
+              - Action:
+                  - codebuild:BatchPutCodeCoverages
+                  - codebuild:BatchPutTestCases
+                  - codebuild:CreateReport
+                  - codebuild:CreateReportGroup
+                  - codebuild:UpdateReport
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${projectName}-*
+                  - projectName:
+                      Fn::Join:
+                        - '-'
+                        - - TestOnReflectProject
+                          - Fn::Select:
+                              - 4
+                              - Fn::Split:
+                                  - '-'
+                                  - Fn::Select:
+                                      - 2
+                                      - Fn::Split:
+                                          - /
+                                          - Ref: AWS::StackId
+              - Action:
+                  - s3:GetBucket*
+                  - s3:GetObject*
+                  - s3:List*
+                Effect: Allow
+                Resource:
+                  - !GetAtt CodePipelineArtifactsBucket.Arn
+                  - !Sub
+                    - ${arn}/*
+                    - arn: !GetAtt CodePipelineArtifactsBucket.Arn
+            Version: '2012-10-17'
+          PolicyName: CodeBuildProjectRoleDefaultPolicy
+  CodeBuildDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/
+                  - Fn::Join:
+                      - '-'
+                      - - TestOnReflectProject
+                        - Fn::Select:
+                            - 4
+                            - Fn::Split:
+                                - '-'
+                                - Fn::Select:
+                                    - 2
+                                    - Fn::Split:
+                                        - /
+                                        - Ref: AWS::StackId
+                  - ':*'
+              - !Join
+                - ''
+                - - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/
+                  - Fn::Join:
+                      - '-'
+                      - - TestOnReflectProject
+                        - Fn::Select:
+                            - 4
+                            - Fn::Split:
+                                - '-'
+                                - Fn::Select:
+                                    - 2
+                                    - Fn::Split:
+                                        - /
+                                        - Ref: AWS::StackId
+          - Action:
+              - codebuild:BatchPutCodeCoverages
+              - codebuild:BatchPutTestCases
+              - codebuild:CreateReport
+              - codebuild:CreateReportGroup
+              - codebuild:UpdateReport
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - !Sub arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/
+                - Fn::Join:
+                    - '-'
+                    - - TestOnReflectProject
+                      - Fn::Select:
+                          - 4
+                          - Fn::Split:
+                              - '-'
+                              - Fn::Select:
+                                  - 2
+                                  - Fn::Split:
+                                      - /
+                                      - Ref: AWS::StackId
+                - '-*'
+          - Action:
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+            Effect: Allow
+            Resource:
+              - !GetAtt CodePipelineArtifactsBucket.Arn
+              - !Join
+                - /
+                - - !GetAtt CodePipelineArtifactsBucket.Arn
+                  - '*'
+          - Action:
+              - secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource:
+              - !Ref ReflectAPIKeySecretArn
+        Version: '2012-10-17'
+      PolicyName: CodeBuildDefaultPolicy
+      Roles:
+        - !Ref CodeBuildRole
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Cache:
+        Type: NO_CACHE
+      Description: Invoke tests on Reflect
+      EncryptionKey: alias/aws/s3
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: API_KEY
+            Type: SECRETS_MANAGER
+            Value: !Join
+                - ':'
+                - - !Ref ReflectAPIKeySecretArn
+                  - !Ref ReflectAPIKeySecretJsonKeyName
+          - Name: SUITE_ID
+            Type: PLAINTEXT
+            Value: !Ref ReflectSuiteId
+          - Name: WAIT_FOR_TEST_RESULTS
+            Type: PLAINTEXT
+            Value: !Ref ReflectWaitForTestResults
+          - Fn::If:
+              - HasReflectParamOverride
+              - Name: PARAM_OVERRIDES
+                Type: PLAINTEXT
+                Value: !Ref ReflectParamOverride
+              - Ref: AWS::NoValue
+          - Fn::If:
+              - HasReflectParamVariables
+              - Name: PARAM_VARIABLES
+                Type: PLAINTEXT
+                Value: !Ref ReflectParamVariables
+              - Ref: AWS::NoValue
+          - Fn::If:
+              - HasReflectParamGitHub
+              - Name: PARAM_GITHUB
+                Type: PLAINTEXT
+                Value: !Ref ReflectParamGitHub
+              - Ref: AWS::NoValue
+      Name:
+        Fn::Join:
+          - '-'
+          - - TestOnReflectProject
+            - Fn::Select:
+                - 4
+                - Fn::Split:
+                    - '-'
+                    - Fn::Select:
+                        - 2
+                        - Fn::Split:
+                            - /
+                            - Ref: AWS::StackId
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Source:
+        BuildSpec: !Ref CICodeBuildSpec
+        Type: NO_SOURCE
+  CodePipelineArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    UpdateReplacePolicy: !Ref RetentionPolicy
+    DeletionPolicy: !Ref RetentionPolicy
+  CodePipelineArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CodePipelineArtifactsBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+            Effect: Deny
+            Principal:
+              AWS: '*'
+            Resource:
+              - !GetAtt CodePipelineArtifactsBucket.Arn
+              - !Join
+                - /
+                - - !GetAtt CodePipelineArtifactsBucket.Arn
+                  - '*'
+        Version: '2012-10-17'
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+        Version: '2012-10-17'
+  CodePipelineDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - !GetAtt CodePipelineArtifactsBucket.Arn
+              - !Join
+                - /
+                - - !GetAtt CodePipelineArtifactsBucket.Arn
+                  - '*'
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Resource:
+              - !GetAtt CodeBuildActionRole.Arn
+              - !GetAtt CodeConnectionsActionRole.Arn
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              - !Sub
+                - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codepipeline/${pipelineName}
+                - pipelineName: !Ref CodePipelineName
+              - !Sub
+                - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codepipeline/${pipelineName}:*
+                - pipelineName: !Ref CodePipelineName
+        Version: '2012-10-17'
+      PolicyName: CodePipelineDefaultPolicy
+      Roles:
+        - !Ref CodePipelineRole
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref CodePipelineArtifactsBucket
+        Type: S3
+      ExecutionMode: QUEUED
+      Name: !Ref CodePipelineName
+      PipelineType: V2
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: CodeConnections
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !Ref ConnectionArn
+                FullRepositoryId: !Ref FullRepositoryId
+                BranchName: !Ref BranchName
+              OutputArtifacts:
+                - Name: SourceOutput
+              Namespace: SourceVariables
+              RoleArn: !GetAtt CodeConnectionsActionRole.Arn
+              RunOrder: 1
+        - Name: TestOnReflect
+          BeforeEntry:
+            Conditions:
+              - Result: FAIL
+                Rules:
+                  - Name: MyDeploymentWindowRule
+                    RuleTypeId:
+                      Category: Rule
+                      Owner: AWS
+                      Provider: DeploymentWindow
+                      Version: '1'
+                    Configuration:
+                      Cron: '* * * * * ? *'
+                      TimeZone: 'PST'
+          Actions:
+            - Name: Test_On_Reflect
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                EnvironmentVariables: >-
+                  [{"name":"SOURCE_VARIABLE_PROVIDER_TYPE","value":"#{SourceVariables.ProviderType}","type":"PLAINTEXT"},{"name":"SOURCE_VARIABLE_FULL_REPO_NAME","value":"#{SourceVariables.FullRepositoryName}","type":"PLAINTEXT"},{"name":"SOURCE_VARIABLE_COMMIT_ID","value":"#{SourceVariables.CommitId}","type":"PLAINTEXT"}]
+                ProjectName:
+                  Fn::Join:
+                    - '-'
+                    - - TestOnReflectProject
+                      - Fn::Select:
+                          - 4
+                          - Fn::Split:
+                              - '-'
+                              - Fn::Select:
+                                  - 2
+                                  - Fn::Split:
+                                      - /
+                                      - Ref: AWS::StackId
+              InputArtifacts:
+                - Name: SourceOutput
+              RoleArn: !GetAtt CodeBuildActionRole.Arn
+              RunOrder: 1
+    DependsOn:
+      - CodePipelineDefaultPolicy
+  CodeConnectionsActionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+        Version: '2012-10-17'
+  CodeConnectionsActionDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: codestar-connections:UseConnection
+            Effect: Allow
+            Resource: !Ref ConnectionArn
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - !GetAtt CodePipelineArtifactsBucket.Arn
+              - !Join
+                - /
+                - - !GetAtt CodePipelineArtifactsBucket.Arn
+                  - '*'
+          - Action:
+              - s3:PutObjectAcl
+              - s3:PutObjectVersionAcl
+            Effect: Allow
+            Resource: !Join
+              - /
+              - - !GetAtt CodePipelineArtifactsBucket.Arn
+                - '*'
+        Version: '2012-10-17'
+      PolicyName: CodeConnectionsActionDefaultPolicy
+      Roles:
+        - !Ref CodeConnectionsActionRole
+  CodeBuildActionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+        Version: '2012-10-17'
+  CodeBuildActionDefaultPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              - codebuild:StopBuild
+            Effect: Allow
+            Resource: !GetAtt CodeBuildProject.Arn
+        Version: '2012-10-17'
+      PolicyName: CodeBuildActionDefaultPolicy
+      Roles:
+        - !Ref CodeBuildActionRole
